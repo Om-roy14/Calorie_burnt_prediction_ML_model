@@ -1,0 +1,74 @@
+import gradio as gr
+import joblib
+import numpy as np
+
+# Load your pre-trained model (make sure the file is in the same directory or provide the full path)
+try:
+    with open("calorie.pkl", "rb") as file:
+        model = joblib.load(file)
+except Exception as e:
+    raise FileNotFoundError("Model file not found. Make sure 'model.pkl' exists.") from e
+
+# Load the scaler as well
+try:
+    with open("scaler.pkl", "rb") as file:
+        scaler = joblib.load(file)
+except Exception as e:
+    raise FileNotFoundError("Scaler file not found. Make sure 'scaler.pkl' exists.") from e
+
+
+def predict_calories(gender, age, height, heart_rate, body_temp):
+    """
+    Predict the number of calories burnt based on the provided inputs.
+
+    Parameters:
+        gender (str): Gender of the individual ('Male' or 'Female').
+        age (float): Age of the individual.
+        height (float): Height in centimeters.
+        heart_rate (float): Average heart rate during exercise.
+        body_temp (float): Body temperature in Celsius.
+
+    Returns:
+        float: Predicted calories burnt.
+    """
+    # Convert gender string to numerical representation (0 for male, 1 for female)
+    gender_numeric = 0 if gender == 'Male' else 1
+
+    # Preprocess the input as required by your model
+    # Example: Creating a 2D numpy array for a single prediction instance.
+    input_data = np.array([[gender_numeric, age, height, heart_rate, body_temp]])
+
+    # Scale the input data using the loaded scaler
+    scaled_input_data = scaler.transform(input_data)
+
+    # Get the model prediction (modify if your model outputs need inverse scaling)
+    prediction = model.predict(scaled_input_data) # Using the loaded model directly
+
+    # Assuming the model outputs a single value prediction.
+    return prediction[0]
+
+# Define the input components for Gradio
+inputs = [
+    gr.Radio(["Male", "Female"], label="Gender"),
+    gr.Number(label="Age", value=30),
+    gr.Number(label="Height (cm)", value=170),
+    gr.Number(label="Average Heart Rate (bpm)", value=120),
+    gr.Number(label="Body Temperature (°C)", value=37)
+]
+
+# Define the output component; in this case, it's a number showing the predicted calories burnt.
+output = gr.Number(label="Predicted Calories Burnt")
+
+# Create a Gradio Interface
+interface = gr.Interface(
+    fn=predict_calories,
+    inputs=inputs,
+    outputs=output,
+    title="Calorie Burn Prediction",
+    description=("Enter your exercise parameters and personal details to predict "
+                 "the number of calories burnt during your workout.")
+)
+
+# Launch the Gradio UI
+if __name__ == "__main__":
+    interface.launch()
